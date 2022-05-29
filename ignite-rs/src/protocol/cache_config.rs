@@ -296,8 +296,8 @@ fn read_query_fields(reader: &mut impl Read) -> IgniteResult<Vec<QueryField>> {
     let count = read_i32(reader)?;
     let mut result = Vec::<QueryField>::new();
     for _ in 0..count {
-        let name = String::read(reader)?.unwrap();
-        let type_name = String::read(reader)?.unwrap();
+        let name = String::read(reader)?.unwrap_or("".to_string());
+        let type_name = String::read(reader)?.unwrap_or("".to_string());
         let key_field = read_bool(reader)?;
         let not_null_constraint = read_bool(reader)?;
         let _default_val = read_object(reader)?;

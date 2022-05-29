@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::io::Read;
 
 use crate::api::key_value::{
     CacheBoolResp, CacheDataObjectResp, CachePairsResp, CacheReq, CacheSizeResp, QueryScanResp,
@@ -15,9 +16,10 @@ use crate::error::{IgniteError, IgniteResult};
 
 use crate::api::OpCode;
 use crate::connection::Connection;
+use crate::protocol::{read_bool, read_i32, read_i64};
 use crate::{ReadableType, WritableType};
 use std::marker::PhantomData;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
 pub enum AtomicityMode {
@@ -241,15 +243,15 @@ pub struct CacheKeyConfiguration {
 
 #[derive(Clone, Debug)]
 pub struct QueryEntity {
-    pub(crate) key_type: String,
-    pub(crate) value_type: String,
-    pub(crate) table: String,
-    pub(crate) key_field: String,
-    pub(crate) value_field: String,
-    pub(crate) query_fields: Vec<QueryField>,
-    pub(crate) field_aliases: Vec<(String, String)>,
-    pub(crate) query_indexes: Vec<QueryIndex>,
-    pub(crate) default_value: Option<String>, //TODO: find the issue where this field is listed
+    pub key_type: String,
+    pub value_type: String,
+    pub table: String,
+    pub key_field: String,
+    pub value_field: String,
+    pub query_fields: Vec<QueryField>,
+    pub field_aliases: Vec<(String, String)>,
+    pub query_indexes: Vec<QueryIndex>,
+    pub default_value: Option<String>, //TODO: find the issue where this field is listed
 }
 
 #[derive(Clone, Debug)]
@@ -275,17 +277,17 @@ pub struct QueryIndex {
 /// All caches created from the single IgniteClient shares the common TCP connection
 pub struct Cache<K: WritableType + ReadableType, V: WritableType + ReadableType> {
     id: i32,
-    pub _name: String,
+    pub cfg: CacheConfiguration,
     conn: Arc<Connection>,
     k_phantom: PhantomData<K>,
     v_phantom: PhantomData<V>,
 }
 
 impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V> {
-    pub(crate) fn new(id: i32, name: String, conn: Arc<Connection>) -> Cache<K, V> {
+    pub(crate) fn new(id: i32, cfg: CacheConfiguration, conn: Arc<Connection>) -> Cache<K, V> {
         Cache {
             id,
-            _name: name,
+            cfg,
             conn,
             k_phantom: PhantomData,
             v_phantom: PhantomData,
@@ -300,6 +302,48 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
                 CacheReq::QueryScan::<K, V>(self.id, page_size),
             )
             .map(|resp: QueryScanResp<K, V>| resp.val)
+    }
+
+    /// https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_sql
+    pub fn query_scan_sql(
+        &self,
+        page_size: i32,
+        type_name: &str,
+        sql: &str,
+    ) -> IgniteResult<Vec<(Option<K>, Option<V>)>> {
+        self.conn
+            .send_and_read(
+                OpCode::QuerySql,
+                CacheReq::QueryScanSql::<K, V>(
+                    self.id,
+                    page_size,
+                    type_name.to_string(),
+                    sql.to_string(),
+                ),
+            )
+            .map(|resp: QueryScanResp<K, V>| resp.val)
+    }
+
+    pub fn query_scan_dyn(
+        &self,
+        page_size: i32,
+        cb: &mut dyn Fn(&mut dyn Read, i32) -> IgniteResult<()>,
+    ) -> IgniteResult<bool> {
+        let req = CacheReq::QueryScan::<K, V>(self.id, page_size);
+        let more: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
+        self.conn
+            .send_and_read_dyn(OpCode::QueryScan, req, &mut |mut buf| {
+                let _cursor_id = read_i64(&mut buf)?;
+                let count = read_i32(&mut buf)?;
+                cb(&mut buf, count)?;
+                more.lock().unwrap().replace(read_bool(&mut buf)?);
+                Ok(())
+            })?;
+        let more = more
+            .lock()
+            .unwrap()
+            .ok_or(IgniteError::from("Callback not invoked!"))?;
+        Ok(more)
     }
 
     pub fn get(&self, key: &K) -> IgniteResult<Option<V>> {

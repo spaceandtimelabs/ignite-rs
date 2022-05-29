@@ -75,6 +75,19 @@ impl Connection {
         Connection::send_and_read_safe(sock_lock, op_code, data)
     }
 
+    /// Send message, let the caller read the result. Acquires lock
+    pub(crate) fn send_and_read_dyn(
+        &self,
+        op_code: OpCode,
+        req: impl WriteableReq,
+        cb: &mut dyn Fn(&mut dyn Read) -> IgniteResult<()>,
+    ) -> IgniteResult<()> {
+        let buf = &mut *self.stream.lock().unwrap(); //acquire lock on socket
+        Connection::send_safe(buf, op_code, req)?; //send request and read the response
+        cb(&mut Box::new(buf))?;
+        Ok(())
+    }
+
     fn send_safe<RW: Read + Write>(
         con: &mut RW,
         op_code: OpCode,
@@ -113,15 +126,16 @@ impl Connection {
     ) -> io::Result<()> {
         write_i32(writer, payload_len as i32 + REQ_HEADER_SIZE_BYTES)?;
         write_i16(writer, op_code)?;
-        write_i64(writer, 0)?;
+        write_i64(writer, 0)?; // Request id
         Ok(())
     }
 
     /// Reads standard response header
     fn read_resp_header(reader: &mut impl Read) -> IgniteResult<Flag> {
-        let _ = read_i32(reader)?;
-        let _ = read_i64(reader)?;
-        match read_i32(reader)? {
+        let _length = read_i32(reader)?;
+        let _req_id = read_i64(reader)?;
+        let status = read_i32(reader)?;
+        match status {
             0 => Ok(Success),
             _ => {
                 let err_msg = String::read(reader)?;
@@ -156,5 +170,65 @@ impl Connection {
             stream.set_ttl(ttl)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::protocol::complex_obj::{ComplexObject, ComplexObjectSchema, IgniteValue};
+    use crate::{new_client, Ignite};
+    use num_bigint::BigInt;
+
+    #[ignore]
+    #[test]
+    fn test_read() {
+        let config = ClientConfig::new("localhost:10800");
+        let mut ignite = new_client(config).unwrap();
+        let table_name = "SQL_PUBLIC_BLOCKS";
+        let cfg = ignite.get_cache_config(table_name).unwrap();
+        let entity = cfg.query_entities.unwrap().last().unwrap().clone();
+        println!("type_name={}", entity.value_type);
+        let cache = ignite
+            .get_or_create_cache::<i64, ComplexObject>(table_name)
+            .unwrap();
+        let rows = cache.query_scan(100).unwrap();
+        assert_eq!(rows.len(), 1);
+    }
+
+    #[ignore]
+    #[test]
+    fn test_crud() {
+        let config = ClientConfig::new("localhost:10800");
+        let mut ignite = new_client(config).unwrap();
+        let table_name = "SQL_PUBLIC_BOOL_TEST";
+        // println!("cache names: {:?}", ignite.get_cache_names());
+        let cfg = ignite.get_cache_config(table_name).unwrap();
+        let entity = cfg.query_entities.unwrap().last().unwrap().clone();
+        let (ks, vs) = ComplexObjectSchema::infer_schemas(&entity).unwrap();
+        println!("ks={ks:?} vs={vs:?}");
+        let type_name = entity.value_type.split(".").last().unwrap();
+        println!("value_type={}", entity.value_type);
+        let key = ComplexObject {
+            schema: ks.clone(),
+            values: vec![IgniteValue::Long(1)],
+        };
+        let val = ComplexObject {
+            schema: vs.clone(),
+            values: vec![IgniteValue::Bool(true)],
+        };
+
+        // let tx_id = ignite.start_transaction().unwrap();
+        let cache = ignite
+            .get_or_create_cache::<ComplexObject, ComplexObject>(table_name)
+            .unwrap();
+        cache.put(&key, &val).unwrap();
+        // ignite.end_transaction(tx_id, false).unwrap();
+
+        let rows = cache.query_scan(100).unwrap();
+        // let rows = cache
+        //     .query_scan_sql(100, type_name, "order by block_number desc limit 1")
+        //     .unwrap();
+        assert_eq!(rows.len(), 1);
     }
 }
