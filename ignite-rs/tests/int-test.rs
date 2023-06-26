@@ -121,4 +121,47 @@ mod int_test {
         )];
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn sql_should_work() {
+        let config = ClientConfig::new("localhost:10800");
+        let mut ignite = new_client(config).unwrap();
+        let table_name = "SQL_PUBLIC_RAINBOW";
+
+        // get the schema
+        let cfg = ignite.get_cache_config(table_name).unwrap();
+        let entity = cfg.query_entities.unwrap().last().unwrap().clone();
+        let type_name = entity.value_type.split(".").last().unwrap();
+
+        // read a row
+        let cache = ignite
+            .get_or_create_cache::<ComplexObject, ComplexObject>(table_name)
+            .unwrap();
+        let actual = cache.query_scan_sql(100, type_name, "where big=1").unwrap();
+        let expected = vec![(
+            Some(ComplexObject {
+                schema: Arc::new(ComplexObjectSchema {
+                    type_name: "".to_string(),
+                    fields: vec![],
+                }),
+                values: vec![IgniteValue::Long(1)],
+            }),
+            Some(ComplexObject {
+                schema: Arc::new(ComplexObjectSchema {
+                    type_name: "".to_string(),
+                    fields: vec![],
+                }),
+                values: vec![
+                    IgniteValue::Bool(true),
+                    IgniteValue::Decimal(1, vec![20]),
+                    IgniteValue::Int(3),
+                    IgniteValue::Short(4),
+                    IgniteValue::String("c".to_string()),
+                    IgniteValue::String("varchar".to_string()),
+                    IgniteValue::Timestamp(1687350896000, 0),
+                ],
+            }),
+        )];
+        assert_eq!(actual, expected);
+    }
 }

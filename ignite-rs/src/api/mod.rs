@@ -35,6 +35,7 @@ pub(crate) enum OpCode {
     CacheGetSize = 1020,
     // sql & scan queries - https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries
     QueryScan = 2000,
+    QuerySql = 2002,
 }
 
 impl Into<i16> for OpCode {

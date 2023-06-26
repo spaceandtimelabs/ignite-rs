@@ -241,15 +241,15 @@ pub struct CacheKeyConfiguration {
 
 #[derive(Clone, Debug)]
 pub struct QueryEntity {
-    pub(crate) key_type: String,
-    pub(crate) value_type: String,
-    pub(crate) table: String,
-    pub(crate) key_field: String,
-    pub(crate) value_field: String,
-    pub(crate) query_fields: Vec<QueryField>,
-    pub(crate) field_aliases: Vec<(String, String)>,
-    pub(crate) query_indexes: Vec<QueryIndex>,
-    pub(crate) default_value: Option<String>, //TODO: find the issue where this field is listed
+    pub key_type: String,
+    pub value_type: String,
+    pub table: String,
+    pub key_field: String,
+    pub value_field: String,
+    pub query_fields: Vec<QueryField>,
+    pub field_aliases: Vec<(String, String)>,
+    pub query_indexes: Vec<QueryIndex>,
+    pub default_value: Option<String>, // TODO: find the issue where this field is listed
 }
 
 #[derive(Clone, Debug)]
@@ -298,6 +298,26 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .send_and_read(
                 OpCode::QueryScan,
                 CacheReq::QueryScan::<K, V>(self.id, page_size),
+            )
+            .map(|resp: QueryScanResp<K, V>| resp.val)
+    }
+
+    /// https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_sql
+    pub fn query_scan_sql(
+        &self,
+        page_size: i32,
+        type_name: &str,
+        sql: &str,
+    ) -> IgniteResult<Vec<(Option<K>, Option<V>)>> {
+        self.conn
+            .send_and_read(
+                OpCode::QuerySql,
+                CacheReq::QueryScanSql::<K, V>(
+                    self.id,
+                    page_size,
+                    type_name.to_string(),
+                    sql.to_string(),
+                ),
             )
             .map(|resp: QueryScanResp<K, V>| resp.val)
     }
