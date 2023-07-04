@@ -13,7 +13,7 @@ use std::io::{Cursor, ErrorKind, Read, Write};
 use std::mem::size_of;
 use std::sync::Arc;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum IgniteValue {
     String(String),
     Long(i64),
@@ -24,7 +24,7 @@ pub enum IgniteValue {
     Decimal(i32, Vec<u8>), // scale, big int value in bytes
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum IgniteType {
     String,
     Long,
@@ -35,21 +35,21 @@ pub enum IgniteType {
     Decimal(i32, i32), // precision, scale
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct IgniteField {
     pub name: String,
     pub r#type: IgniteType,
 }
 
 // https://apacheignite.readme.io/docs/binary-client-protocol-data-format#schema
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ComplexObjectSchema {
     pub type_name: String,
     pub fields: Vec<IgniteField>,
 }
 
 // https://apacheignite.readme.io/docs/binary-client-protocol-data-format#complex-object
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct ComplexObject {
     pub schema: Arc<ComplexObjectSchema>,
     pub values: Vec<IgniteValue>,
