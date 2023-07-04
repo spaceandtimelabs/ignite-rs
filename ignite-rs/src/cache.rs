@@ -256,12 +256,12 @@ pub struct QueryEntity {
 
 #[derive(Clone, Debug)]
 pub struct QueryField {
-    pub(crate) name: String,
-    pub(crate) type_name: String,
-    pub(crate) key_field: bool,
-    pub(crate) not_null_constraint: bool,
-    pub(crate) precision: i32,
-    pub(crate) scale: i32,
+    pub name: String,
+    pub type_name: String,
+    pub key_field: bool,
+    pub not_null_constraint: bool,
+    pub precision: i32,
+    pub scale: i32,
 }
 
 #[derive(Clone, Debug)]
