@@ -64,6 +64,10 @@ mod int_test {
                         r#type: IgniteType::Int
                     },
                     IgniteField {
+                        name: "NULL_INT".to_string(),
+                        r#type: IgniteType::Int
+                    },
+                    IgniteField {
                         name: "SMALL".to_string(),
                         r#type: IgniteType::Short
                     },
