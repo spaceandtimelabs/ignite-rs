@@ -112,6 +112,7 @@ mod int_test {
                     IgniteValue::Bool(true),
                     IgniteValue::Decimal(1, vec![20]),
                     IgniteValue::Int(3),
+                    IgniteValue::Null,
                     IgniteValue::Short(4),
                     IgniteValue::String("c".to_string()),
                     IgniteValue::String("varchar".to_string()),

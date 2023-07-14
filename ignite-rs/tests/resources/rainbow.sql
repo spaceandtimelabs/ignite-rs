@@ -20,4 +20,4 @@ create table rainbow (
 );
 
 insert into rainbow (big, bool, dec, int, null_int, small, char, var, ts) values
-    (1, true, 2.0, 3, 4, null, 'c', 'varchar', timestamp '2023-06-21 12:34:56 UTC');
+    (1, true, 2.0, 3, null, 4, 'c', 'varchar', timestamp '2023-06-21 12:34:56 UTC');
