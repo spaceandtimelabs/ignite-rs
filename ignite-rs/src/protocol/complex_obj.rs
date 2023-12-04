@@ -1,10 +1,10 @@
 use crate::cache::{QueryEntity, QueryField};
 use crate::error::{IgniteError, IgniteResult};
 use crate::protocol::{
-    read_bool, read_i16, read_i32, read_i64, read_string, read_u16, read_u8, write_i16, write_i32,
-    write_i64, write_null, write_string, write_u16, write_u8, TypeCode, COMPLEX_OBJ_HEADER_LEN,
-    FLAG_COMPACT_FOOTER, FLAG_HAS_SCHEMA, FLAG_OFFSET_ONE_BYTE, FLAG_OFFSET_TWO_BYTES,
-    FLAG_USER_TYPE, HAS_RAW_DATA,
+    read_bool, read_i16, read_i32, read_i64, read_i8, read_string, read_u16, read_u8, write_i16,
+    write_i32, write_i64, write_i8, write_null, write_string, write_u16, write_u8, TypeCode,
+    COMPLEX_OBJ_HEADER_LEN, FLAG_COMPACT_FOOTER, FLAG_HAS_SCHEMA, FLAG_OFFSET_ONE_BYTE,
+    FLAG_OFFSET_TWO_BYTES, FLAG_USER_TYPE, HAS_RAW_DATA,
 };
 use crate::utils::{bytes_to_java_hashcode, get_schema_id, string_to_java_hashcode};
 use crate::{ReadableType, WritableType};
@@ -19,6 +19,7 @@ pub enum IgniteValue {
     Long(i64),
     Int(i32),
     Short(i16),
+    Byte(i8),
     Bool(bool),
     Timestamp(i64, i32), // milliseconds since 1 Jan 1970 UTC, Nanosecond fraction of a millisecond.
     Decimal(i32, Vec<u8>), // scale, big int value in bytes
@@ -31,6 +32,7 @@ pub enum IgniteType {
     Long,
     Int,
     Short,
+    Byte,
     Bool,
     Timestamp,
     Decimal(i32, i32), // precision, scale
@@ -83,6 +85,10 @@ impl ComplexObject {
                 IgniteValue::Short(val) => {
                     write_u8(&mut values, TypeCode::Short as u8)?;
                     write_i16(&mut values, *val)?;
+                }
+                IgniteValue::Byte(val) => {
+                    write_u8(&mut values, TypeCode::Byte as u8)?;
+                    write_i8(&mut values, *val)?;
                 }
                 IgniteValue::Bool(val) => {
                     write_u8(&mut values, TypeCode::Bool as u8)?;
@@ -153,6 +159,11 @@ impl ReadableType for ComplexObject {
                 let field = IgniteValue::Short(val);
                 me.values.push(field);
             }
+            TypeCode::Byte => {
+                let val = read_i8(reader).unwrap();
+                let field = IgniteValue::Byte(val);
+                me.values.push(field);
+            }
             TypeCode::ComplexObj => {
                 // read header minus type code
                 let mut partial_header = vec![0u8; COMPLEX_OBJ_HEADER_LEN as usize - 1];
@@ -208,6 +219,7 @@ impl ReadableType for ComplexObject {
                         TypeCode::Long => IgniteValue::Long(read_i64(&mut remainder)?),
                         TypeCode::Int => IgniteValue::Int(read_i32(&mut remainder)?),
                         TypeCode::Short => IgniteValue::Short(read_i16(&mut remainder)?),
+                        TypeCode::Byte => IgniteValue::Byte(read_i8(&mut remainder)?),
                         TypeCode::Bool => IgniteValue::Bool(read_bool(&mut remainder)?),
                         TypeCode::Timestamp => {
                             let big = read_i64(&mut remainder)?;
@@ -446,6 +458,7 @@ impl ComplexObjectSchema {
             let t: IgniteType = match f.type_name.as_str() {
                 "java.lang.Long" => IgniteType::Long,
                 "java.lang.Short" => IgniteType::Short,
+                "java.lang.Byte" => IgniteType::Byte,
                 "java.lang.String" => IgniteType::String,
                 "java.sql.Timestamp" => IgniteType::Timestamp,
                 "java.lang.Integer" => IgniteType::Int,
