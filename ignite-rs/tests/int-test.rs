@@ -72,6 +72,10 @@ mod int_test {
                         r#type: IgniteType::Short
                     },
                     IgniteField {
+                        name: "TINY".to_string(),
+                        r#type: IgniteType::Byte
+                    },
+                    IgniteField {
                         name: "CHAR".to_string(),
                         r#type: IgniteType::String
                     },
@@ -118,6 +122,7 @@ mod int_test {
                     IgniteValue::Int(3),
                     IgniteValue::Null,
                     IgniteValue::Short(4),
+                    IgniteValue::Byte(5),
                     IgniteValue::String("c".to_string()),
                     IgniteValue::String("varchar".to_string()),
                     IgniteValue::Timestamp(1687350896000, 0),

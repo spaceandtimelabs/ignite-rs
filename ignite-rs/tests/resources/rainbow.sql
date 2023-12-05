@@ -9,7 +9,7 @@ create table rainbow (
      null_int INT, -- java.lang.Integer
 --      real REAL, -- java.lang.Float -- TODO: add support for this type
      small SMALLINT, -- java.lang.Short
---      tiny TINYINT, -- java.lang.Byte -- TODO: add support for this type
+     tiny TINYINT, -- java.lang.Byte
      char CHAR, -- java.lang.String
      var VARCHAR, -- java.lang.String
 --      date DATE, -- java.sql.Date -- TODO: add support for this type
@@ -19,5 +19,5 @@ create table rainbow (
      primary key (big)
 );
 
-insert into rainbow (big, bool, dec, int, null_int, small, char, var, ts) values
-    (1, true, 2.0, 3, null, 4, 'c', 'varchar', timestamp '2023-06-21 12:34:56 UTC');
+insert into rainbow (big, bool, dec, int, null_int, small, tiny, char, var, ts) values
+    (1, true, 2.0, 3, null, 4, 5, 'c', 'varchar', timestamp '2023-06-21 12:34:56 UTC');
