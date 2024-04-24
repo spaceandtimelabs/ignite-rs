@@ -2,7 +2,8 @@ use std::convert::TryFrom;
 use std::io::Read;
 
 use crate::api::key_value::{
-    CacheBoolResp, CacheDataObjectResp, CachePairsResp, CacheReq, CacheSizeResp, QueryScanResp,
+    CacheBoolResp, CacheDataObjectResp, CachePairsResp, CacheReq, CacheSizeResp,
+    QueryScanCursorGetPageResp, QueryScanResp,
 };
 use crate::cache::AtomicityMode::{Atomic, Transactional};
 use crate::cache::CacheMode::{Local, Partitioned, Replicated};
@@ -294,6 +295,8 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
         }
     }
 
+    /// Retrieve rows from a table.
+    /// The number of retrieved rows is limited by the page size.
     /// https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_scan
     pub fn query_scan(&self, page_size: i32) -> IgniteResult<Vec<(Option<K>, Option<V>)>> {
         self.conn
@@ -302,6 +305,29 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
                 CacheReq::QueryScan::<K, V>(self.id, page_size),
             )
             .map(|resp: QueryScanResp<K, V>| resp.val)
+    }
+
+    /// Retrieve all rows from a table.
+    /// https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_scan
+    /// https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_scan_cursor_get_page
+    pub fn query_scan_all(&self, page_size: i32) -> IgniteResult<Vec<(Option<K>, Option<V>)>> {
+        let resp: QueryScanResp<K, V> = self.conn.send_and_read(
+            OpCode::QueryScan,
+            CacheReq::QueryScan::<K, V>(self.id, page_size),
+        )?;
+        let mut val = resp.val;
+        let mut more_available = resp.more;
+        let mut cursor_id = resp.cursor_id;
+        while more_available {
+            let page_resp: QueryScanCursorGetPageResp<K, V> = self.conn.send_and_read(
+                OpCode::QueryScanCursorGetPage,
+                CacheReq::QueryScanCursorGetPage::<K, V>(cursor_id),
+            )?;
+            val.extend(page_resp.val);
+            more_available = page_resp.more;
+            cursor_id = page_resp.cursor_id;
+        }
+        Ok(val)
     }
 
     /// https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_sql
