@@ -321,15 +321,17 @@ impl<K: ReadableType, V: ReadableType> ReadableReq for QueryScanResp<K, V> {
 }
 
 pub(crate) struct QueryScanCursorGetPageResp<K: ReadableType, V: ReadableType> {
-    pub(crate) cursor_id: i64,
     pub(crate) val: Vec<(Option<K>, Option<V>)>,
     pub(crate) more: bool,
 }
 
 impl<K: ReadableType, V: ReadableType> ReadableReq for QueryScanCursorGetPageResp<K, V> {
+    // The official specification for the response differs from the actual response:
+    // - the actual response doesn't contain a Cursor ID field
+    // - the actual response uses "int" instead of "long" for the row count
+    // Upstream report: https://issues.apache.org/jira/browse/IGNITE-8411
     fn read(reader: &mut impl Read) -> IgniteResult<Self> {
-        let cursor_id = read_i64(reader)?;
-        let count = read_i64(reader)?;
+        let count = read_i32(reader)?;
         let mut pairs: Vec<(Option<K>, Option<V>)> = Vec::new();
         for _ in 0..count {
             let key = K::read(reader)?;
@@ -338,7 +340,6 @@ impl<K: ReadableType, V: ReadableType> ReadableReq for QueryScanCursorGetPageRes
         }
         let more = read_bool(reader)?;
         Ok(QueryScanCursorGetPageResp {
-            cursor_id,
             val: pairs,
             more,
         })

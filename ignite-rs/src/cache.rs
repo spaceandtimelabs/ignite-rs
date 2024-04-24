@@ -315,9 +315,9 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             OpCode::QueryScan,
             CacheReq::QueryScan::<K, V>(self.id, page_size),
         )?;
+        let cursor_id = resp.cursor_id;
         let mut val = resp.val;
         let mut more_available = resp.more;
-        let mut cursor_id = resp.cursor_id;
         while more_available {
             let page_resp: QueryScanCursorGetPageResp<K, V> = self.conn.send_and_read(
                 OpCode::QueryScanCursorGetPage,
@@ -325,7 +325,6 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             )?;
             val.extend(page_resp.val);
             more_available = page_resp.more;
-            cursor_id = page_resp.cursor_id;
         }
         Ok(val)
     }
