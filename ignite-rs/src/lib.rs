@@ -149,6 +149,11 @@ pub trait Ignite {
         &mut self,
         name: &str,
     ) -> IgniteResult<Cache<K, V>>;
+
+    fn get_cache<K: WritableType + ReadableType, V: WritableType + ReadableType>(
+        &mut self,
+        name: &str,
+    ) -> IgniteResult<Cache<K, V>>;
     /// Creates a new cache with provided configuration.
     /// Fails if cache with this name already exists
     fn create_cache_with_config<K: WritableType + ReadableType, V: WritableType + ReadableType>(
@@ -244,6 +249,18 @@ impl Ignite for Client {
             OpCode::CacheGetOrCreateWithName,
             CacheGetOrCreateWithNameReq::from(name),
         )?;
+        let cfg = self.get_cache_config(name)?;
+        Ok(Cache::new(
+            string_to_java_hashcode(name),
+            cfg,
+            self.conn.clone(),
+        ))
+    }
+
+    fn get_cache<K: WritableType + ReadableType, V: WritableType + ReadableType>(
+        &mut self,
+        name: &str,
+    ) -> IgniteResult<Cache<K, V>> {
         let cfg = self.get_cache_config(name)?;
         Ok(Cache::new(
             string_to_java_hashcode(name),
