@@ -275,6 +275,7 @@ pub struct QueryIndex {
 /// Ignite key-value cache. This cache is strongly typed and reading/writing some other
 /// types leads to errors.
 /// All caches created from the single IgniteClient shares the common TCP connection
+#[derive(Clone)]
 pub struct Cache<K: WritableType + ReadableType, V: WritableType + ReadableType> {
     id: i32,
     pub cfg: CacheConfiguration,
