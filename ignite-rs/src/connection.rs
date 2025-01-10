@@ -178,7 +178,6 @@ mod tests {
     use super::*;
     use crate::protocol::complex_obj::{ComplexObject, ComplexObjectSchema, IgniteValue};
     use crate::{new_client, Ignite};
-    use num_bigint::BigInt;
 
     #[ignore]
     #[test]
@@ -207,7 +206,7 @@ mod tests {
         let entity = cfg.query_entities.unwrap().last().unwrap().clone();
         let (ks, vs) = ComplexObjectSchema::infer_schemas(&entity).unwrap();
         println!("ks={ks:?} vs={vs:?}");
-        let type_name = entity.value_type.split(".").last().unwrap();
+        let _type_name = entity.value_type.split(".").last().unwrap();
         println!("value_type={}", entity.value_type);
         let key = ComplexObject {
             schema: ks.clone(),
