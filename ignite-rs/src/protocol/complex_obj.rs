@@ -23,6 +23,7 @@ pub enum IgniteValue {
     Bool(bool),
     Timestamp(i64, i32), // milliseconds since 1 Jan 1970 UTC, Nanosecond fraction of a millisecond.
     Decimal(i32, Vec<u8>), // scale, big int value in bytes
+    Binary(Vec<u8>),
     Null,
 }
 
@@ -36,6 +37,7 @@ pub enum IgniteType {
     Bool,
     Timestamp,
     Decimal(i32, i32), // precision, scale
+    Binary,
     Null,
 }
 
@@ -102,6 +104,11 @@ impl ComplexObject {
                 IgniteValue::Decimal(scale, data) => {
                     write_u8(&mut values, TypeCode::Decimal as u8)?;
                     write_i32(&mut values, *scale)?;
+                    write_i32(&mut values, data.len() as i32)?;
+                    values.write_all(data)?;
+                }
+                IgniteValue::Binary(data) => {
+                    write_u8(&mut values, TypeCode::ArrByte as u8)?;
                     write_i32(&mut values, data.len() as i32)?;
                     values.write_all(data)?;
                 }
@@ -179,10 +186,10 @@ impl ReadableType for ComplexObject {
                 let _type_code = read_u8(&mut header)?; // offset 0
                 assert_eq!(read_u8(&mut header)?, 1, "Only version 1 supported"); // version
                 let flags = read_u16(&mut header)?; // offset 2
-                let type_id = read_i32(&mut header)?; // offset 4
+                let _type_id = read_i32(&mut header)?; // offset 4
                 let _hash_code = read_i32(&mut header)?; // offset 8
                 let object_len = read_i32(&mut header)? as usize; // offset 12
-                let schema_id = read_i32(&mut header)?; // offset 16
+                let _schema_id = read_i32(&mut header)?; // offset 16
                 let field_indexes_offset = read_i32(&mut header)? as usize; // offset 20
 
                 // compute stuff we need to read body
@@ -234,6 +241,12 @@ impl ReadableType for ComplexObject {
                             IgniteValue::Decimal(scale, buf)
                         }
                         TypeCode::Null => IgniteValue::Null,
+                        TypeCode::ArrByte => {
+                            let len = read_i32(&mut remainder)?;
+                            let mut buf = vec![0; len as usize];
+                            remainder.read_exact(&mut buf)?;
+                            IgniteValue::Binary(buf)
+                        }
                         _ => {
                             let msg = format!("Unknown type: {:?}", field_type);
                             Err(IgniteError::from(msg.as_str()))?
@@ -464,6 +477,10 @@ impl ComplexObjectSchema {
                 "java.lang.Integer" => IgniteType::Int,
                 "java.lang.Boolean" => IgniteType::Bool,
                 "java.math.BigDecimal" => IgniteType::Decimal(f.precision, f.scale),
+                // '[B' is a JVM quirk -- this can happen for arrays of some
+                // primitive types. Specifically, it is the output of
+                // `System.out.println(byte[].class.getName());`
+                "[B" => IgniteType::Binary,
                 _ => Err(IgniteError::from(
                     format!("Unknown field type: {}", f.type_name).as_str(),
                 ))?,

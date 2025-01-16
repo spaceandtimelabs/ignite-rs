@@ -86,6 +86,10 @@ mod int_test {
                     IgniteField {
                         name: "TS".to_string(),
                         r#type: IgniteType::Timestamp
+                    },
+                    IgniteField {
+                        name: "BIN".to_string(),
+                        r#type: IgniteType::Binary
                     }
                 ]
             }
@@ -126,6 +130,7 @@ mod int_test {
                     IgniteValue::String("c".to_string()),
                     IgniteValue::String("varchar".to_string()),
                     IgniteValue::Timestamp(1687350896000, 0),
+                    IgniteValue::Binary(vec![18, 52, 86, 120, 144, 171, 205, 239]), // 0x1234567890abcdef
                 ],
             }),
         )];
