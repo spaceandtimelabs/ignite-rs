@@ -477,7 +477,9 @@ impl ComplexObjectSchema {
                 "java.lang.Integer" => IgniteType::Int,
                 "java.lang.Boolean" => IgniteType::Bool,
                 "java.math.BigDecimal" => IgniteType::Decimal(f.precision, f.scale),
-                // No idea why this isn't somthing like "byte[]" or "java.lang.Byte[]"
+                // '[B' is a JVM quirk -- this can happen for arrays of some
+                // primitive types. Specifically, it is the output of
+                // `System.out.println(byte[].class.getName());`
                 "[B" => IgniteType::Binary,
                 _ => Err(IgniteError::from(
                     format!("Unknown field type: {}", f.type_name).as_str(),
