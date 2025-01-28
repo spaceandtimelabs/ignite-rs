@@ -37,6 +37,7 @@ pub(crate) enum CacheReq<'a, K: WritableType, V: WritableType> {
     RemoveKeys(i32, &'a [K]),
     RemoveAll(i32),
     QueryScan(i32, i32),                    // cache ID, page size,
+    QueryScanCursorGetPage(i64),            // cursor ID
     QueryScanSql(i32, i32, String, String), // cache ID, page size, table/type, sql
     QueryScanSqlFields(i32, i32, String),   // cache ID, page size, sql
 }
@@ -119,6 +120,11 @@ impl<'a, K: WritableType, V: WritableType> WriteableReq for CacheReq<'a, K, V> {
                 write_i32(writer, *pg_sz)?;
                 write_i32(writer, -1)?; // negative to query entire cache
                 write_bool(writer, false)?; // can be executed anywhere?
+                Ok(())
+            }
+            // https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_scan_cursor_get_page
+            CacheReq::QueryScanCursorGetPage(cursor_id) => {
+                write_i64(writer, *cursor_id)?;
                 Ok(())
             }
             // https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_sql
@@ -226,6 +232,9 @@ impl<'a, K: WritableType, V: WritableType> WriteableReq for CacheReq<'a, K, V> {
                 + size_of::<i32>() // Partition count
                 + size_of::<u8>() // local only flag
             }
+            CacheReq::QueryScanCursorGetPage(_) => {
+                size_of::<i64>() // Cursor ID
+            }
             CacheReq::QueryScanSql(_, _, table, sql) => {
                 CACHE_ID_MAGIC_BYTE_SIZE
                     + size_of::<i32>() + table.len() + size_of::<u8>()
@@ -287,12 +296,14 @@ impl<K: ReadableType, V: ReadableType> ReadableReq for CachePairsResp<K, V> {
 }
 
 pub(crate) struct QueryScanResp<K: ReadableType, V: ReadableType> {
+    pub(crate) cursor_id: i64,
     pub(crate) val: Vec<(Option<K>, Option<V>)>,
+    pub(crate) more: bool,
 }
 
 impl<K: ReadableType, V: ReadableType> ReadableReq for QueryScanResp<K, V> {
     fn read(reader: &mut impl Read) -> IgniteResult<Self> {
-        let _cursor_id = read_i64(reader)?;
+        let cursor_id = read_i64(reader)?;
         let count = read_i32(reader)?;
         let mut pairs: Vec<(Option<K>, Option<V>)> = Vec::new();
         for _ in 0..count {
@@ -300,8 +311,38 @@ impl<K: ReadableType, V: ReadableType> ReadableReq for QueryScanResp<K, V> {
             let val = V::read(reader)?;
             pairs.push((key, val));
         }
-        let _more = read_bool(reader)?; // TODO: get more results
-        Ok(QueryScanResp { val: pairs })
+        let more = read_bool(reader)?;
+        Ok(QueryScanResp {
+            cursor_id,
+            val: pairs,
+            more,
+        })
+    }
+}
+
+pub(crate) struct QueryScanCursorGetPageResp<K: ReadableType, V: ReadableType> {
+    pub(crate) val: Vec<(Option<K>, Option<V>)>,
+    pub(crate) more: bool,
+}
+
+impl<K: ReadableType, V: ReadableType> ReadableReq for QueryScanCursorGetPageResp<K, V> {
+    // The official specification for the response differs from the actual response:
+    // - the actual response doesn't contain a Cursor ID field
+    // - the actual response uses "int" instead of "long" for the row count
+    // Upstream report: https://issues.apache.org/jira/browse/IGNITE-8411
+    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+        let count = read_i32(reader)?;
+        let mut pairs: Vec<(Option<K>, Option<V>)> = Vec::new();
+        for _ in 0..count {
+            let key = K::read(reader)?;
+            let val = V::read(reader)?;
+            pairs.push((key, val));
+        }
+        let more = read_bool(reader)?;
+        Ok(QueryScanCursorGetPageResp {
+            val: pairs,
+            more,
+        })
     }
 }
 
