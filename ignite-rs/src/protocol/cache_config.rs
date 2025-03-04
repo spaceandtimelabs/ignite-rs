@@ -8,7 +8,7 @@ use crate::cache::{
 use crate::cache::{
     CacheConfiguration, CacheKeyConfiguration, QueryEntity, QueryField, QueryIndex,
 };
-use crate::error::IgniteError;
+use crate::error::Error;
 use crate::error::Result;
 use crate::protocol::cache_config::ConfigPropertyCode::*;
 use crate::protocol::{
@@ -199,7 +199,7 @@ pub(crate) fn read_cache_configuration(reader: &mut impl Read) -> Result<CacheCo
         default_lock_timeout_ms: read_i64(reader)?,
         max_concurrent_async_operations: read_i32(reader)?,
         max_query_iterators: read_i32(reader)?,
-        name: String::read(reader)?.ok_or_else(|| IgniteError::from("name is required"))?,
+        name: String::read(reader)?.ok_or_else(|| Error::from("name is required"))?,
         onheap_cache_enabled: read_bool(reader)?,
         partition_loss_policy: PartitionLossPolicy::try_from(read_i32(reader)?)?,
         query_detail_metrics_size: read_i32(reader)?,

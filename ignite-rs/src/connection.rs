@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 
 use crate::api::OpCode;
-use crate::error::{IgniteError, Result};
+use crate::error::{Error, Result};
 use crate::handshake::handshake;
 use crate::protocol::Flag::{Failure, Success};
 use crate::protocol::{read_i32, read_i64, write_i16, write_i32, write_i64, Flag};
@@ -55,7 +55,7 @@ impl Connection {
                     Err(err) => Err(err),
                 }
             }
-            Err(err) => Err(IgniteError::from(err)),
+            Err(err) => Err(Error::from(err)),
         }
     }
 
@@ -105,7 +105,7 @@ impl Connection {
         //read response
         match Connection::read_resp_header(con)? {
             Flag::Success => Ok(()),
-            Flag::Failure { err_msg } => Err(IgniteError::from(err_msg.as_str())),
+            Flag::Failure { err_msg } => Err(Error::from(err_msg.as_str())),
         }
     }
 

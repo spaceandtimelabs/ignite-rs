@@ -1,5 +1,5 @@
 use crate::cache::{QueryEntity, QueryField};
-use crate::error::{IgniteError, Result};
+use crate::error::{Error, Result};
 use crate::protocol::{
     read_bool, read_i16, read_i32, read_i64, read_i8, read_string, read_u16, read_u8, write_i16,
     write_i32, write_i64, write_i8, write_null, write_string, write_u16, write_u8, TypeCode,
@@ -205,7 +205,7 @@ impl ReadableType for ComplexObject {
                     (true, false) => 1,
                     (false, true) => 2,
                     (false, false) => 4,
-                    (true, true) => Err(IgniteError::from("Invalid offset flags"))?,
+                    (true, true) => Err(Error::from("Invalid offset flags"))?,
                 };
 
                 // append body
@@ -249,7 +249,7 @@ impl ReadableType for ComplexObject {
                         }
                         _ => {
                             let msg = format!("Unknown type: {:?}", field_type);
-                            Err(IgniteError::from(msg.as_str()))?
+                            Err(Error::from(msg.as_str()))?
                         }
                     };
                     me.values.push(val);
@@ -481,7 +481,7 @@ impl ComplexObjectSchema {
                 // primitive types. Specifically, it is the output of
                 // `System.out.println(byte[].class.getName());`
                 "[B" => IgniteType::Binary,
-                _ => Err(IgniteError::from(
+                _ => Err(Error::from(
                     format!("Unknown field type: {}", f.type_name).as_str(),
                 ))?,
             };

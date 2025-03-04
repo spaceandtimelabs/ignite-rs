@@ -12,7 +12,7 @@ use crate::cache::PartitionLossPolicy::{
 };
 use crate::cache::RebalanceMode::Async;
 use crate::cache::WriteSynchronizationMode::{FullAsync, FullSync, PrimarySync};
-use crate::error::{IgniteError, Result};
+use crate::error::{Error, Result};
 
 use crate::api::OpCode;
 use crate::connection::Connection;
@@ -28,13 +28,13 @@ pub enum AtomicityMode {
 }
 
 impl TryFrom<i32> for AtomicityMode {
-    type Error = IgniteError;
+    type Error = Error;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(Transactional),
             1 => Ok(Atomic),
-            _ => Err(IgniteError::from("Cannot read AtomicityMode")),
+            _ => Err(Error::from("Cannot read AtomicityMode")),
         }
     }
 }
@@ -47,14 +47,14 @@ pub enum CacheMode {
 }
 
 impl TryFrom<i32> for CacheMode {
-    type Error = IgniteError;
+    type Error = Error;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(Local),
             1 => Ok(Replicated),
             2 => Ok(Partitioned),
-            _ => Err(IgniteError::from("Cannot read CacheMode")),
+            _ => Err(Error::from("Cannot read CacheMode")),
         }
     }
 }
@@ -69,7 +69,7 @@ pub enum PartitionLossPolicy {
 }
 
 impl TryFrom<i32> for PartitionLossPolicy {
-    type Error = IgniteError;
+    type Error = Error;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
@@ -78,7 +78,7 @@ impl TryFrom<i32> for PartitionLossPolicy {
             2 => Ok(ReadWriteSafe),
             3 => Ok(ReadWriteAll),
             4 => Ok(Ignore),
-            _ => Err(IgniteError::from("Cannot read PartitionLossPolicy")),
+            _ => Err(Error::from("Cannot read PartitionLossPolicy")),
         }
     }
 }
@@ -91,14 +91,14 @@ pub enum RebalanceMode {
 }
 
 impl TryFrom<i32> for RebalanceMode {
-    type Error = IgniteError;
+    type Error = Error;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(RebalanceMode::Sync),
             1 => Ok(Async),
             2 => Ok(RebalanceMode::None),
-            _ => Err(IgniteError::from("Cannot read RebalanceMode")),
+            _ => Err(Error::from("Cannot read RebalanceMode")),
         }
     }
 }
@@ -111,14 +111,14 @@ pub enum WriteSynchronizationMode {
 }
 
 impl TryFrom<i32> for WriteSynchronizationMode {
-    type Error = IgniteError;
+    type Error = Error;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(FullSync),
             1 => Ok(FullAsync),
             2 => Ok(PrimarySync),
-            _ => Err(IgniteError::from("Cannot read WriteSynchronizationMode")),
+            _ => Err(Error::from("Cannot read WriteSynchronizationMode")),
         }
     }
 }
@@ -145,14 +145,14 @@ pub enum IndexType {
 }
 
 impl TryFrom<u8> for IndexType {
-    type Error = IgniteError;
+    type Error = Error;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(Sorted),
             1 => Ok(Fulltext),
             2 => Ok(GeoSpatial),
-            _ => Err(IgniteError::from("Cannot read IndexType")),
+            _ => Err(Error::from("Cannot read IndexType")),
         }
     }
 }
@@ -343,7 +343,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
         let more = more
             .lock()
             .unwrap()
-            .ok_or(IgniteError::from("Callback not invoked!"))?;
+            .ok_or(Error::from("Callback not invoked!"))?;
         Ok(more)
     }
 

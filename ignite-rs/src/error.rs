@@ -4,42 +4,42 @@ use std::{convert, error};
 #[cfg(feature = "ssl")]
 use webpki::InvalidDNSNameError;
 
-pub type Result<T, E = IgniteError> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug)]
-pub struct IgniteError {
+pub struct Error {
     pub(crate) desc: String,
 }
 
-impl error::Error for IgniteError {}
+impl error::Error for Error {}
 
-impl Display for IgniteError {
+impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.desc)
     }
 }
 
-impl convert::From<IoError> for IgniteError {
+impl convert::From<IoError> for Error {
     fn from(e: IoError) -> Self {
-        IgniteError {
+        Error {
             desc: e.to_string(),
         }
     }
 }
 
-impl convert::From<&str> for IgniteError {
+impl convert::From<&str> for Error {
     fn from(desc: &str) -> Self {
-        IgniteError {
+        Error {
             desc: String::from(desc),
         }
     }
 }
 
-impl convert::From<Option<String>> for IgniteError {
+impl convert::From<Option<String>> for Error {
     fn from(desc: Option<String>) -> Self {
         match desc {
-            Some(desc) => IgniteError { desc },
-            None => IgniteError {
+            Some(desc) => Error { desc },
+            None => Error {
                 desc: "Ignite client error! No description provided".to_owned(),
             },
         }
@@ -47,9 +47,9 @@ impl convert::From<Option<String>> for IgniteError {
 }
 
 #[cfg(feature = "ssl")]
-impl convert::From<InvalidDNSNameError> for IgniteError {
+impl convert::From<InvalidDNSNameError> for Error {
     fn from(err: InvalidDNSNameError) -> Self {
-        IgniteError {
+        Error {
             desc: err.to_string(),
         }
     }

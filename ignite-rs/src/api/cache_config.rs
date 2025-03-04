@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
 use crate::cache::CacheConfiguration;
-use crate::error::{IgniteError, Result};
+use crate::error::{Error, Result};
 use crate::protocol::cache_config::{get_cache_configuration_bytes, read_cache_configuration};
 use crate::protocol::{
     read_i32, write_bool, write_i32, write_i64, write_null, write_string_type_code, write_u8,
@@ -90,7 +90,7 @@ impl ReadableReq for CacheGetNamesResp {
         let mut names = Vec::<String>::new();
         for _ in 0..count {
             match String::read(reader)? {
-                None => return Err(IgniteError::from("NULL is not expected")),
+                None => return Err(Error::from("NULL is not expected")),
                 Some(n) => names.push(n),
             };
         }

@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::error::{IgniteError, Result};
+use crate::error::{Error, Result};
 use crate::protocol::*;
 use crate::protocol::{read_u8, TypeCode};
 
@@ -176,7 +176,7 @@ impl<T: WritableType + ReadableType> ReadableType for Vec<Option<T>> {
                 }
                 Ok(Some(data))
             }
-            _ => Err(IgniteError::from("Expected Array or Collection!")),
+            _ => Err(Error::from("Expected Array or Collection!")),
         }
     }
 }

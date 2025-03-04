@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
 use crate::api::OpCode;
-use crate::error::{IgniteError, Result};
+use crate::error::{Error, Result};
 use crate::protocol::{
     read_i16, read_i32, read_u8, write_i16, write_i32, write_string_type_code, write_u8,
 };
@@ -18,7 +18,7 @@ pub(crate) fn handshake<T: Read + Write>(conn: &mut T, conf: &ClientConfig) -> R
     let mut msg_size = MIN_HANDSHAKE_SIZE;
 
     if conf.username.is_some() != conf.password.is_some() {
-        return Err(IgniteError::from("Both username and password expected!"));
+        return Err(Error::from("Both username and password expected!"));
     }
 
     if let Some(ref user) = conf.username {
@@ -52,7 +52,7 @@ pub(crate) fn handshake<T: Read + Write>(conn: &mut T, conf: &ClientConfig) -> R
     match read_u8(conn)? {
         1 => Ok(()),
         _ => match read_handshake_err(conn) {
-            Ok(msg) => Err(IgniteError::from(msg.as_str())),
+            Ok(msg) => Err(Error::from(msg.as_str())),
             Err(err) => Err(err),
         },
     }

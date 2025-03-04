@@ -1,7 +1,7 @@
 use std::io;
 use std::io::{ErrorKind, Read, Write};
 
-use crate::error::{IgniteError, Result};
+use crate::error::{Error, Result};
 
 use crate::{Enum, ReadableType};
 use std::convert::TryFrom;
@@ -52,7 +52,7 @@ pub enum TypeCode {
 }
 
 impl TryFrom<u8> for TypeCode {
-    type Error = IgniteError;
+    type Error = Error;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
@@ -81,7 +81,7 @@ impl TryFrom<u8> for TypeCode {
             27 => Ok(TypeCode::WrappedData),
             103 => Ok(TypeCode::ComplexObj),
             101 => Ok(TypeCode::Null),
-            _ => Err(IgniteError::from(
+            _ => Err(Error::from(
                 format!("Cannot read TypeCode {}", value).as_str(),
             )),
         }
@@ -100,7 +100,7 @@ fn read_object(reader: &mut impl Read) -> Result<Option<()>> {
     let code = code?;
     match code {
         TypeCode::Null => Ok(Some(())),
-        _ => Err(IgniteError::from(
+        _ => Err(Error::from(
             format!("Cannot read TypeCode {}", flag).as_str(),
         )),
     }
@@ -133,7 +133,7 @@ pub fn read_wrapped_data_dyn(
             let _offset = read_i32(reader)?;
             value
         }
-        _ => Err(IgniteError::from("Data is not wrapped!")),
+        _ => Err(Error::from("Data is not wrapped!")),
     }
 }
 
