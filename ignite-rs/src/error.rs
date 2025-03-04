@@ -1,22 +1,14 @@
-use std::fmt::{Display, Formatter};
+use snafu::Snafu;
+use std::convert;
 use std::io::Error as IoError;
-use std::{convert, error};
 #[cfg(feature = "ssl")]
 use webpki::InvalidDNSNameError;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug)]
+#[derive(Snafu, Debug)]
 pub struct Error {
     pub(crate) desc: String,
-}
-
-impl error::Error for Error {}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.desc)
-    }
 }
 
 impl convert::From<IoError> for Error {
