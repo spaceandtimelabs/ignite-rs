@@ -61,7 +61,7 @@ impl Connection {
 
     /// Send message and read response header. Acquires lock
     pub(crate) fn send(&self, op_code: OpCode, data: impl WriteableReq) -> Result<()> {
-        let sock_lock = &mut *self.stream.lock().unwrap(); //acquire lock on socket
+        let sock_lock = &mut *self.stream.lock()?; //acquire lock on socket
         Connection::send_safe(sock_lock, op_code, data)
     }
 
@@ -71,7 +71,7 @@ impl Connection {
         op_code: OpCode,
         data: impl WriteableReq,
     ) -> Result<T> {
-        let sock_lock = &mut *self.stream.lock().unwrap(); //acquire lock on socket
+        let sock_lock = &mut *self.stream.lock()?; //acquire lock on socket
         Connection::send_and_read_safe(sock_lock, op_code, data)
     }
 
@@ -82,7 +82,7 @@ impl Connection {
         req: impl WriteableReq,
         cb: &mut dyn Fn(&mut dyn Read) -> Result<()>,
     ) -> Result<()> {
-        let buf = &mut *self.stream.lock().unwrap(); //acquire lock on socket
+        let buf = &mut *self.stream.lock()?; //acquire lock on socket
         Connection::send_safe(buf, op_code, req)?; //send request and read the response
         cb(&mut Box::new(buf))?;
         Ok(())
