@@ -9,7 +9,7 @@ use crate::api::OpCode;
 
 use crate::cache::{Cache, CacheConfiguration};
 use crate::connection::Connection;
-use crate::error::IgniteResult;
+use crate::error::Result;
 use crate::protocol::{read_wrapped_data, TypeCode};
 use crate::utils::string_to_java_hashcode;
 
@@ -39,7 +39,7 @@ pub(crate) trait WriteableReq {
 /// It is indented to be implemented by structs which represents requests. Acts as a closure
 /// for response handling
 pub(crate) trait ReadableReq: Sized {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self>;
+    fn read(reader: &mut impl Read) -> Result<Self>;
 }
 /// Indicates that a type could be used as cache key/value.
 /// Used alongside ReadableType
@@ -51,8 +51,8 @@ pub trait WritableType {
 /// Indicates that a type could be used as cache key/value.
 /// Used alongside WritableType
 pub trait ReadableType: Sized {
-    fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> IgniteResult<Option<Self>>;
-    fn read(reader: &mut impl Read) -> IgniteResult<Option<Self>> {
+    fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> Result<Option<Self>>;
+    fn read(reader: &mut impl Read) -> Result<Option<Self>> {
         read_wrapped_data(reader)
     }
 }
@@ -125,41 +125,41 @@ impl ClientConfig {
 
 /// Create new Ignite client using provided configuration
 /// Returned client has only one TCP connection with cluster
-pub fn new_client(conf: ClientConfig) -> IgniteResult<Client> {
+pub fn new_client(conf: ClientConfig) -> Result<Client> {
     Client::new(conf)
 }
 
 pub trait Ignite {
     /// Start a transaction
-    fn start_transaction(&mut self) -> IgniteResult<i32>;
+    fn start_transaction(&mut self) -> Result<i32>;
 
     /// End a transaction
-    fn end_transaction(&mut self, tx_id: i32, commit: bool) -> IgniteResult<()>;
+    fn end_transaction(&mut self, tx_id: i32, commit: bool) -> Result<()>;
 
     /// Returns names of caches currently available in cluster
-    fn get_cache_names(&mut self) -> IgniteResult<Vec<String>>;
+    fn get_cache_names(&mut self) -> Result<Vec<String>>;
     /// Creates a new cache with provided name and default configuration.
     /// Fails if cache with this name already exists
     fn create_cache<K: WritableType + ReadableType, V: WritableType + ReadableType>(
         &mut self,
         name: &str,
-    ) -> IgniteResult<Cache<K, V>>;
+    ) -> Result<Cache<K, V>>;
     /// Returns or creates a new cache with provided name and default configuration.
     fn get_or_create_cache<K: WritableType + ReadableType, V: WritableType + ReadableType>(
         &mut self,
         name: &str,
-    ) -> IgniteResult<Cache<K, V>>;
+    ) -> Result<Cache<K, V>>;
 
     fn get_cache<K: WritableType + ReadableType, V: WritableType + ReadableType>(
         &mut self,
         name: &str,
-    ) -> IgniteResult<Cache<K, V>>;
+    ) -> Result<Cache<K, V>>;
     /// Creates a new cache with provided configuration.
     /// Fails if cache with this name already exists
     fn create_cache_with_config<K: WritableType + ReadableType, V: WritableType + ReadableType>(
         &mut self,
         config: &CacheConfiguration,
-    ) -> IgniteResult<Cache<K, V>>;
+    ) -> Result<Cache<K, V>>;
     /// Creates a new cache with provided configuration.
     fn get_or_create_cache_with_config<
         K: WritableType + ReadableType,
@@ -167,12 +167,12 @@ pub trait Ignite {
     >(
         &mut self,
         config: &CacheConfiguration,
-    ) -> IgniteResult<Cache<K, V>>;
+    ) -> Result<Cache<K, V>>;
     /// Returns a configuration of the requested cache.
     /// Fails if there is no such cache
-    fn get_cache_config(&mut self, name: &str) -> IgniteResult<CacheConfiguration>;
+    fn get_cache_config(&mut self, name: &str) -> Result<CacheConfiguration>;
     /// Destroys the cache. All the data is removed.
-    fn destroy_cache(&mut self, name: &str) -> IgniteResult<()>;
+    fn destroy_cache(&mut self, name: &str) -> Result<()>;
 }
 
 /// Basic Ignite Client
@@ -192,7 +192,7 @@ impl Clone for Client {
 }
 
 impl Client {
-    fn new(conf: ClientConfig) -> IgniteResult<Client> {
+    fn new(conf: ClientConfig) -> Result<Client> {
         // make connection
         match Connection::new(&conf) {
             Ok(conn) => {
@@ -208,7 +208,7 @@ impl Client {
 }
 
 impl Ignite for Client {
-    fn get_cache_names(&mut self) -> IgniteResult<Vec<String>> {
+    fn get_cache_names(&mut self) -> Result<Vec<String>> {
         let resp: CacheGetNamesResp = self
             .conn
             .send_and_read(OpCode::CacheGetNames, CacheGetNamesReq {})?;
@@ -218,7 +218,7 @@ impl Ignite for Client {
     fn create_cache<K: WritableType + ReadableType, V: WritableType + ReadableType>(
         &mut self,
         name: &str,
-    ) -> IgniteResult<Cache<K, V>> {
+    ) -> Result<Cache<K, V>> {
         self.conn.send(
             OpCode::CacheCreateWithName,
             CacheCreateWithNameReq::from(name),
@@ -231,12 +231,12 @@ impl Ignite for Client {
         ))
     }
 
-    fn start_transaction(&mut self) -> IgniteResult<i32> {
+    fn start_transaction(&mut self) -> Result<i32> {
         let resp: ClientIntResp = self.conn.send_and_read(OpCode::TxStart, TxnStartReq {})?;
         Ok(resp.value)
     }
 
-    fn end_transaction(&mut self, tx_id: i32, commit: bool) -> IgniteResult<()> {
+    fn end_transaction(&mut self, tx_id: i32, commit: bool) -> Result<()> {
         self.conn.send(OpCode::TxEnd, TxnEndReq { tx_id, commit })?;
         Ok(())
     }
@@ -244,7 +244,7 @@ impl Ignite for Client {
     fn get_or_create_cache<K: WritableType + ReadableType, V: WritableType + ReadableType>(
         &mut self,
         name: &str,
-    ) -> IgniteResult<Cache<K, V>> {
+    ) -> Result<Cache<K, V>> {
         self.conn.send(
             OpCode::CacheGetOrCreateWithName,
             CacheGetOrCreateWithNameReq::from(name),
@@ -260,7 +260,7 @@ impl Ignite for Client {
     fn get_cache<K: WritableType + ReadableType, V: WritableType + ReadableType>(
         &mut self,
         name: &str,
-    ) -> IgniteResult<Cache<K, V>> {
+    ) -> Result<Cache<K, V>> {
         let cfg = self.get_cache_config(name)?;
         Ok(Cache::new(
             string_to_java_hashcode(name),
@@ -272,7 +272,7 @@ impl Ignite for Client {
     fn create_cache_with_config<K: WritableType + ReadableType, V: WritableType + ReadableType>(
         &mut self,
         config: &CacheConfiguration,
-    ) -> IgniteResult<Cache<K, V>> {
+    ) -> Result<Cache<K, V>> {
         self.conn.send(
             OpCode::CacheCreateWithConfiguration,
             CacheCreateWithConfigReq { config },
@@ -290,7 +290,7 @@ impl Ignite for Client {
     >(
         &mut self,
         config: &CacheConfiguration,
-    ) -> IgniteResult<Cache<K, V>> {
+    ) -> Result<Cache<K, V>> {
         self.conn.send(
             OpCode::CacheGetOrCreateWithConfiguration,
             CacheGetOrCreateWithConfigReq { config },
@@ -302,14 +302,14 @@ impl Ignite for Client {
         ))
     }
 
-    fn get_cache_config(&mut self, name: &str) -> IgniteResult<CacheConfiguration> {
+    fn get_cache_config(&mut self, name: &str) -> Result<CacheConfiguration> {
         let resp: CacheGetConfigResp = self
             .conn
             .send_and_read(OpCode::CacheGetConfiguration, CacheGetConfigReq::from(name))?;
         Ok(resp.config)
     }
 
-    fn destroy_cache(&mut self, name: &str) -> IgniteResult<()> {
+    fn destroy_cache(&mut self, name: &str) -> Result<()> {
         self.conn
             .send(OpCode::CacheDestroy, CacheDestroyReq::from(name))
     }

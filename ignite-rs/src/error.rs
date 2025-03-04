@@ -4,7 +4,7 @@ use std::{convert, error};
 #[cfg(feature = "ssl")]
 use webpki::InvalidDNSNameError;
 
-pub type IgniteResult<T> = Result<T, IgniteError>;
+pub type Result<T, E = IgniteError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
 pub struct IgniteError {

@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::error::{IgniteError, IgniteResult};
+use crate::error::{IgniteError, Result};
 use crate::protocol::*;
 use crate::protocol::{read_u8, TypeCode};
 
@@ -52,10 +52,7 @@ impl WritableType for String {
 macro_rules! read_type {
     ($t:ty, $read_fn:ident) => {
         impl ReadableType for $t {
-            fn read_unwrapped(
-                type_code: TypeCode,
-                reader: &mut impl Read,
-            ) -> IgniteResult<Option<Self>> {
+            fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> Result<Option<Self>> {
                 let value: Option<Self> = match type_code {
                     TypeCode::Null => None,
                     _ => Some($read_fn(reader)?),
@@ -108,10 +105,7 @@ write_primitive_arr!(u16, TypeCode::ArrChar, write_u16, 2);
 macro_rules! read_primitive_arr {
     ($t:ty, $read_fn:ident) => {
         impl ReadableType for Vec<$t> {
-            fn read_unwrapped(
-                type_code: TypeCode,
-                reader: &mut impl Read,
-            ) -> IgniteResult<Option<Self>> {
+            fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> Result<Option<Self>> {
                 let value: Option<Self> = match type_code {
                     TypeCode::Null => None,
                     _ => Some(read_primitive_arr(reader, $read_fn)?),
@@ -159,7 +153,7 @@ impl<T: WritableType + ReadableType> WritableType for Vec<Option<T>> {
 }
 
 impl<T: WritableType + ReadableType> ReadableType for Vec<Option<T>> {
-    fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> IgniteResult<Option<Self>> {
+    fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> Result<Option<Self>> {
         match type_code {
             TypeCode::Null => Ok(None),
             TypeCode::ArrObj => {
@@ -204,7 +198,7 @@ impl<T: WritableType> WritableType for Option<T> {
 }
 
 impl<T: ReadableType> ReadableType for Option<T> {
-    fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> IgniteResult<Option<Self>> {
+    fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> Result<Option<Self>> {
         let inner_op = T::read_unwrapped(type_code, reader)?;
         match inner_op {
             None => Ok(None),

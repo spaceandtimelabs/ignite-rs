@@ -12,7 +12,7 @@ use crate::cache::PartitionLossPolicy::{
 };
 use crate::cache::RebalanceMode::Async;
 use crate::cache::WriteSynchronizationMode::{FullAsync, FullSync, PrimarySync};
-use crate::error::{IgniteError, IgniteResult};
+use crate::error::{IgniteError, Result};
 
 use crate::api::OpCode;
 use crate::connection::Connection;
@@ -296,7 +296,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
     }
 
     /// https://ignite.apache.org/docs/latest/binary-client-protocol/sql-and-scan-queries#op_query_scan
-    pub fn query_scan(&self, page_size: i32) -> IgniteResult<Vec<(Option<K>, Option<V>)>> {
+    pub fn query_scan(&self, page_size: i32) -> Result<Vec<(Option<K>, Option<V>)>> {
         self.conn
             .send_and_read(
                 OpCode::QueryScan,
@@ -311,7 +311,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
         page_size: i32,
         type_name: &str,
         sql: &str,
-    ) -> IgniteResult<Vec<(Option<K>, Option<V>)>> {
+    ) -> Result<Vec<(Option<K>, Option<V>)>> {
         self.conn
             .send_and_read(
                 OpCode::QuerySql,
@@ -328,8 +328,8 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
     pub fn query_scan_dyn(
         &self,
         page_size: i32,
-        cb: &mut dyn Fn(&mut dyn Read, i32) -> IgniteResult<()>,
-    ) -> IgniteResult<bool> {
+        cb: &mut dyn Fn(&mut dyn Read, i32) -> Result<()>,
+    ) -> Result<bool> {
         let req = CacheReq::QueryScan::<K, V>(self.id, page_size);
         let more: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
         self.conn
@@ -347,31 +347,31 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
         Ok(more)
     }
 
-    pub fn get(&self, key: &K) -> IgniteResult<Option<V>> {
+    pub fn get(&self, key: &K) -> Result<Option<V>> {
         self.conn
             .send_and_read(OpCode::CacheGet, CacheReq::Get::<K, V>(self.id, key))
             .map(|resp: CacheDataObjectResp<V>| resp.val)
     }
 
-    pub fn get_all(&self, keys: &[K]) -> IgniteResult<Vec<(Option<K>, Option<V>)>> {
+    pub fn get_all(&self, keys: &[K]) -> Result<Vec<(Option<K>, Option<V>)>> {
         self.conn
             .send_and_read(OpCode::CacheGetAll, CacheReq::GetAll::<K, V>(self.id, keys))
             .map(|resp: CachePairsResp<K, V>| resp.val)
     }
 
-    pub fn put(&self, key: &K, value: &V) -> IgniteResult<()> {
+    pub fn put(&self, key: &K, value: &V) -> Result<()> {
         self.conn
             .send(OpCode::CachePut, CacheReq::Put::<K, V>(self.id, key, value))
     }
 
-    pub fn put_all(&self, pairs: &[(K, V)]) -> IgniteResult<()> {
+    pub fn put_all(&self, pairs: &[(K, V)]) -> Result<()> {
         self.conn.send(
             OpCode::CachePutAll,
             CacheReq::PutAll::<K, V>(self.id, pairs),
         )
     }
 
-    pub fn contains_key(&self, key: &K) -> IgniteResult<bool> {
+    pub fn contains_key(&self, key: &K) -> Result<bool> {
         self.conn
             .send_and_read(
                 OpCode::CacheContainsKey,
@@ -380,7 +380,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheBoolResp| resp.flag)
     }
 
-    pub fn contains_keys(&self, keys: &[K]) -> IgniteResult<bool> {
+    pub fn contains_keys(&self, keys: &[K]) -> Result<bool> {
         self.conn
             .send_and_read(
                 OpCode::CacheContainsKeys,
@@ -389,7 +389,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheBoolResp| resp.flag)
     }
 
-    pub fn get_and_put(&self, key: &K, value: &V) -> IgniteResult<Option<V>> {
+    pub fn get_and_put(&self, key: &K, value: &V) -> Result<Option<V>> {
         self.conn
             .send_and_read(
                 OpCode::CacheGetAndPut,
@@ -398,7 +398,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheDataObjectResp<V>| resp.val)
     }
 
-    pub fn get_and_replace(&self, key: &K, value: &V) -> IgniteResult<Option<V>> {
+    pub fn get_and_replace(&self, key: &K, value: &V) -> Result<Option<V>> {
         self.conn
             .send_and_read(
                 OpCode::CacheGetAndReplace,
@@ -407,7 +407,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheDataObjectResp<V>| resp.val)
     }
 
-    pub fn get_and_remove(&self, key: &K) -> IgniteResult<Option<V>> {
+    pub fn get_and_remove(&self, key: &K) -> Result<Option<V>> {
         self.conn
             .send_and_read(
                 OpCode::CacheGetAndRemove,
@@ -416,7 +416,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheDataObjectResp<V>| resp.val)
     }
 
-    pub fn put_if_absent(&self, key: &K, value: &V) -> IgniteResult<bool> {
+    pub fn put_if_absent(&self, key: &K, value: &V) -> Result<bool> {
         self.conn
             .send_and_read(
                 OpCode::CachePutIfAbsent,
@@ -425,7 +425,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheBoolResp| resp.flag)
     }
 
-    pub fn get_and_put_if_absent(&self, key: &K, value: &V) -> IgniteResult<Option<V>> {
+    pub fn get_and_put_if_absent(&self, key: &K, value: &V) -> Result<Option<V>> {
         self.conn
             .send_and_read(
                 OpCode::CacheGetAndPutIfAbsent,
@@ -434,7 +434,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheDataObjectResp<V>| resp.val)
     }
 
-    pub fn replace(&self, key: &K, value: &V) -> IgniteResult<bool> {
+    pub fn replace(&self, key: &K, value: &V) -> Result<bool> {
         self.conn
             .send_and_read(
                 OpCode::CacheReplace,
@@ -443,7 +443,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheBoolResp| resp.flag)
     }
 
-    pub fn replace_if_equals(&self, key: &K, old: &V, new: &V) -> IgniteResult<bool> {
+    pub fn replace_if_equals(&self, key: &K, old: &V, new: &V) -> Result<bool> {
         self.conn
             .send_and_read(
                 OpCode::CacheReplaceIfEquals,
@@ -452,26 +452,26 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheBoolResp| resp.flag)
     }
 
-    pub fn clear(&self) -> IgniteResult<()> {
+    pub fn clear(&self) -> Result<()> {
         self.conn
             .send(OpCode::CacheClear, CacheReq::Clear::<K, V>(self.id))
     }
 
-    pub fn clear_key(&self, key: &K) -> IgniteResult<()> {
+    pub fn clear_key(&self, key: &K) -> Result<()> {
         self.conn.send(
             OpCode::CacheClearKey,
             CacheReq::ClearKey::<K, V>(self.id, key),
         )
     }
 
-    pub fn clear_keys(&self, keys: &[K]) -> IgniteResult<()> {
+    pub fn clear_keys(&self, keys: &[K]) -> Result<()> {
         self.conn.send(
             OpCode::CacheClearKeys,
             CacheReq::ClearKeys::<K, V>(self.id, keys),
         )
     }
 
-    pub fn remove_key(&self, key: &K) -> IgniteResult<bool> {
+    pub fn remove_key(&self, key: &K) -> Result<bool> {
         self.conn
             .send_and_read(
                 OpCode::CacheRemoveKey,
@@ -480,7 +480,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheBoolResp| resp.flag)
     }
 
-    pub fn remove_if_equals(&self, key: &K, value: &V) -> IgniteResult<bool> {
+    pub fn remove_if_equals(&self, key: &K, value: &V) -> Result<bool> {
         self.conn
             .send_and_read(
                 OpCode::CacheRemoveIfEquals,
@@ -489,7 +489,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheBoolResp| resp.flag)
     }
 
-    pub fn get_size(&self) -> IgniteResult<i64> {
+    pub fn get_size(&self) -> Result<i64> {
         let modes = Vec::new();
         self.conn
             .send_and_read(
@@ -499,7 +499,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheSizeResp| resp.size)
     }
 
-    pub fn get_size_peek_mode(&self, mode: CachePeekMode) -> IgniteResult<i64> {
+    pub fn get_size_peek_mode(&self, mode: CachePeekMode) -> Result<i64> {
         let modes = vec![mode];
         self.conn
             .send_and_read(
@@ -509,7 +509,7 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheSizeResp| resp.size)
     }
 
-    pub fn get_size_peek_modes(&self, modes: Vec<CachePeekMode>) -> IgniteResult<i64> {
+    pub fn get_size_peek_modes(&self, modes: Vec<CachePeekMode>) -> Result<i64> {
         self.conn
             .send_and_read(
                 OpCode::CacheGetSize,
@@ -518,14 +518,14 @@ impl<K: WritableType + ReadableType, V: WritableType + ReadableType> Cache<K, V>
             .map(|resp: CacheSizeResp| resp.size)
     }
 
-    pub fn remove_keys(&self, keys: &[K]) -> IgniteResult<()> {
+    pub fn remove_keys(&self, keys: &[K]) -> Result<()> {
         self.conn.send(
             OpCode::CacheRemoveKeys,
             CacheReq::RemoveKeys::<K, V>(self.id, keys),
         )
     }
 
-    pub fn remove_all(&self) -> IgniteResult<()> {
+    pub fn remove_all(&self) -> Result<()> {
         self.conn
             .send(OpCode::CacheRemoveAll, CacheReq::RemoveAll::<K, V>(self.id))
     }

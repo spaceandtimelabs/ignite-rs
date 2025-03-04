@@ -1,5 +1,5 @@
 use crate::cache::{QueryEntity, QueryField};
-use crate::error::{IgniteError, IgniteResult};
+use crate::error::{IgniteError, Result};
 use crate::protocol::{
     read_bool, read_i16, read_i32, read_i64, read_i8, read_string, read_u16, read_u8, write_i16,
     write_i32, write_i64, write_i8, write_null, write_string, write_u16, write_u8, TypeCode,
@@ -137,7 +137,7 @@ impl ComplexObject {
 }
 
 impl ReadableType for ComplexObject {
-    fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> IgniteResult<Option<Self>> {
+    fn read_unwrapped(type_code: TypeCode, reader: &mut impl Read) -> Result<Option<Self>> {
         let mut me = ComplexObject {
             schema: Arc::new(ComplexObjectSchema {
                 type_name: "".to_string(),
@@ -441,7 +441,7 @@ impl ComplexObjectSchema {
     /// Find the key and value DynamicIgniteTypes for a table.
     pub fn infer_schemas(
         entity: &QueryEntity,
-    ) -> IgniteResult<(Arc<ComplexObjectSchema>, Arc<ComplexObjectSchema>)> {
+    ) -> Result<(Arc<ComplexObjectSchema>, Arc<ComplexObjectSchema>)> {
         let key_fields: Vec<_> = entity
             .query_fields
             .iter()
@@ -465,7 +465,7 @@ impl ComplexObjectSchema {
         Ok((Arc::new(k), Arc::new(v)))
     }
 
-    fn convert_fields(qry_fields: &[&QueryField]) -> IgniteResult<Vec<IgniteField>> {
+    fn convert_fields(qry_fields: &[&QueryField]) -> Result<Vec<IgniteField>> {
         let mut fields = vec![];
         for f in qry_fields.iter() {
             let t: IgniteType = match f.type_name.as_str() {

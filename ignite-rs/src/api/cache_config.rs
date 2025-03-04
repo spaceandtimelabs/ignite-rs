@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
 use crate::cache::CacheConfiguration;
-use crate::error::{IgniteError, IgniteResult};
+use crate::error::{IgniteError, Result};
 use crate::protocol::cache_config::{get_cache_configuration_bytes, read_cache_configuration};
 use crate::protocol::{
     read_i32, write_bool, write_i32, write_i64, write_null, write_string_type_code, write_u8,
@@ -38,7 +38,7 @@ pub(crate) struct ClientIntResp {
 }
 
 impl ReadableReq for ClientIntResp {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+    fn read(reader: &mut impl Read) -> Result<Self> {
         let value = read_i32(reader)?;
 
         Ok(ClientIntResp { value })
@@ -83,7 +83,7 @@ pub(crate) struct CacheGetNamesResp {
 }
 
 impl ReadableReq for CacheGetNamesResp {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+    fn read(reader: &mut impl Read) -> Result<Self> {
         // cache count
         let count = read_i32(reader)?;
 
@@ -199,7 +199,7 @@ pub(crate) struct CacheGetConfigResp {
 }
 
 impl ReadableReq for CacheGetConfigResp {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+    fn read(reader: &mut impl Read) -> Result<Self> {
         let _ = read_i32(reader)?;
         let config = read_cache_configuration(reader)?;
         Ok(CacheGetConfigResp { config })

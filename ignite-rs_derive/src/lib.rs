@@ -105,7 +105,7 @@ fn impl_read_type(type_name: &Ident, fields: &FieldsNamed) -> TokenStream {
 
     quote! {
             impl ignite_rs::ReadableType for #type_name {
-            fn read_unwrapped(type_code: ignite_rs::protocol::TypeCode, reader: &mut impl std::io::Read) -> ignite_rs::error::IgniteResult<Option<Self>> {
+            fn read_unwrapped(type_code: ignite_rs::protocol::TypeCode, reader: &mut impl std::io::Read) -> ignite_rs::error::Result<Option<Self>> {
                 let value: Option<Self> = match type_code {
                     ignite_rs::protocol::TypeCode::Null => None,
                     _ => {

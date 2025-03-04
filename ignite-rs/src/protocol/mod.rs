@@ -1,7 +1,7 @@
 use std::io;
 use std::io::{ErrorKind, Read, Write};
 
-use crate::error::{IgniteError, IgniteResult};
+use crate::error::{IgniteError, Result};
 
 use crate::{Enum, ReadableType};
 use std::convert::TryFrom;
@@ -94,7 +94,7 @@ pub(crate) enum Flag {
     Failure { err_msg: String },
 }
 
-fn read_object(reader: &mut impl Read) -> IgniteResult<Option<()>> {
+fn read_object(reader: &mut impl Read) -> Result<Option<()>> {
     let flag = read_u8(reader)?;
     let code = TypeCode::try_from(flag);
     let code = code?;
@@ -107,7 +107,7 @@ fn read_object(reader: &mut impl Read) -> IgniteResult<Option<()>> {
 }
 
 /// Reads data objects that are wrapped in the WrappedData(type code = 27)
-pub fn read_wrapped_data<T: ReadableType>(reader: &mut impl Read) -> IgniteResult<Option<T>> {
+pub fn read_wrapped_data<T: ReadableType>(reader: &mut impl Read) -> Result<Option<T>> {
     let type_code = TypeCode::try_from(read_u8(reader)?)?;
     match type_code {
         TypeCode::WrappedData => {
@@ -123,8 +123,8 @@ pub fn read_wrapped_data<T: ReadableType>(reader: &mut impl Read) -> IgniteResul
 /// Reads data objects that are wrapped in the WrappedData(type code = 27)
 pub fn read_wrapped_data_dyn(
     reader: &mut dyn Read,
-    cb: &mut dyn Fn(&mut dyn Read, i32) -> IgniteResult<()>,
-) -> IgniteResult<()> {
+    cb: &mut dyn Fn(&mut dyn Read, i32) -> Result<()>,
+) -> Result<()> {
     let type_code = TypeCode::try_from(read_u8(reader)?)?;
     match type_code {
         TypeCode::WrappedData => {
@@ -140,8 +140,8 @@ pub fn read_wrapped_data_dyn(
 /// Reads a complex object (type code = 103)
 pub fn read_complex_obj_dyn(
     reader: &mut dyn Read,
-    cb: &mut dyn Fn(&mut dyn Read, i32) -> IgniteResult<()>,
-) -> IgniteResult<()> {
+    cb: &mut dyn Fn(&mut dyn Read, i32) -> Result<()>,
+) -> Result<()> {
     let _ver = read_u8(reader)?; // 1
     let flags = read_u16(reader)?; // 43
     let _type_id = read_i32(reader)?;

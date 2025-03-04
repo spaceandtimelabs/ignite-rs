@@ -1,5 +1,5 @@
 use crate::cache::CachePeekMode;
-use crate::error::IgniteResult;
+use crate::error::Result;
 use crate::protocol::{
     read_bool, read_i32, read_i64, write_bool, write_i32, write_i64, write_i8, write_null,
     write_string, write_u8, TypeCode,
@@ -263,7 +263,7 @@ pub(crate) struct CacheDataObjectResp<V: ReadableType> {
 }
 
 impl<V: ReadableType> ReadableReq for CacheDataObjectResp<V> {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+    fn read(reader: &mut impl Read) -> Result<Self> {
         let val = V::read(reader)?;
         Ok(CacheDataObjectResp { val })
     }
@@ -274,7 +274,7 @@ pub(crate) struct CachePairsResp<K: ReadableType, V: ReadableType> {
 }
 
 impl<K: ReadableType, V: ReadableType> ReadableReq for CachePairsResp<K, V> {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+    fn read(reader: &mut impl Read) -> Result<Self> {
         let count = read_i32(reader)?;
         let mut pairs: Vec<(Option<K>, Option<V>)> = Vec::new();
         for _ in 0..count {
@@ -291,7 +291,7 @@ pub(crate) struct QueryScanResp<K: ReadableType, V: ReadableType> {
 }
 
 impl<K: ReadableType, V: ReadableType> ReadableReq for QueryScanResp<K, V> {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+    fn read(reader: &mut impl Read) -> Result<Self> {
         let _cursor_id = read_i64(reader)?;
         let count = read_i32(reader)?;
         let mut pairs: Vec<(Option<K>, Option<V>)> = Vec::new();
@@ -310,7 +310,7 @@ pub(crate) struct CacheSizeResp {
 }
 
 impl ReadableReq for CacheSizeResp {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+    fn read(reader: &mut impl Read) -> Result<Self> {
         let size = read_i64(reader)?;
         Ok(CacheSizeResp { size })
     }
@@ -321,7 +321,7 @@ pub(crate) struct CacheBoolResp {
 }
 
 impl ReadableReq for CacheBoolResp {
-    fn read(reader: &mut impl Read) -> IgniteResult<Self> {
+    fn read(reader: &mut impl Read) -> Result<Self> {
         let flag = read_bool(reader)?;
         Ok(CacheBoolResp { flag })
     }
