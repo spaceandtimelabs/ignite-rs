@@ -49,7 +49,7 @@ mod int_test {
         assert_eq!(
             *vs,
             ComplexObjectSchema {
-                type_name: vs.type_name().to_string(),
+                type_name: vs.type_name.to_string(),
                 fields: vec![
                     IgniteField {
                         name: "BOOL".to_string(),
