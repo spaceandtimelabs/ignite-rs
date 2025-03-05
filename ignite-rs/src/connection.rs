@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 
 use crate::api::OpCode;
-use crate::error::{IgniteError, IgniteResult};
+use crate::error::{Error, Result};
 use crate::handshake::handshake;
 use crate::protocol::Flag::{Failure, Success};
 use crate::protocol::{read_i32, read_i64, write_i16, write_i32, write_i64, Flag};
@@ -30,7 +30,7 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub(crate) fn new(conf: &ClientConfig) -> IgniteResult<Connection> {
+    pub(crate) fn new(conf: &ClientConfig) -> Result<Connection> {
         match TcpStream::connect(&conf.addr) {
             Ok(stream) => {
                 // apply tcp configs
@@ -55,13 +55,13 @@ impl Connection {
                     Err(err) => Err(err),
                 }
             }
-            Err(err) => Err(IgniteError::from(err)),
+            Err(err) => Err(Error::from(err)),
         }
     }
 
     /// Send message and read response header. Acquires lock
-    pub(crate) fn send(&self, op_code: OpCode, data: impl WriteableReq) -> IgniteResult<()> {
-        let sock_lock = &mut *self.stream.lock().unwrap(); //acquire lock on socket
+    pub(crate) fn send(&self, op_code: OpCode, data: impl WriteableReq) -> Result<()> {
+        let sock_lock = &mut *self.stream.lock()?; //acquire lock on socket
         Connection::send_safe(sock_lock, op_code, data)
     }
 
@@ -70,8 +70,8 @@ impl Connection {
         &self,
         op_code: OpCode,
         data: impl WriteableReq,
-    ) -> IgniteResult<T> {
-        let sock_lock = &mut *self.stream.lock().unwrap(); //acquire lock on socket
+    ) -> Result<T> {
+        let sock_lock = &mut *self.stream.lock()?; //acquire lock on socket
         Connection::send_and_read_safe(sock_lock, op_code, data)
     }
 
@@ -80,9 +80,9 @@ impl Connection {
         &self,
         op_code: OpCode,
         req: impl WriteableReq,
-        cb: &mut dyn Fn(&mut dyn Read) -> IgniteResult<()>,
-    ) -> IgniteResult<()> {
-        let buf = &mut *self.stream.lock().unwrap(); //acquire lock on socket
+        cb: &mut dyn Fn(&mut dyn Read) -> Result<()>,
+    ) -> Result<()> {
+        let buf = &mut *self.stream.lock()?; //acquire lock on socket
         Connection::send_safe(buf, op_code, req)?; //send request and read the response
         cb(&mut Box::new(buf))?;
         Ok(())
@@ -92,7 +92,7 @@ impl Connection {
         con: &mut RW,
         op_code: OpCode,
         payload: impl WriteableReq,
-    ) -> IgniteResult<()> {
+    ) -> Result<()> {
         // write common message header
         Connection::write_req_header(con, payload.size(), op_code as i16)?;
 
@@ -105,7 +105,7 @@ impl Connection {
         //read response
         match Connection::read_resp_header(con)? {
             Flag::Success => Ok(()),
-            Flag::Failure { err_msg } => Err(IgniteError::from(err_msg.as_str())),
+            Flag::Failure { err_msg } => Err(Error::from(err_msg.as_str())),
         }
     }
 
@@ -113,7 +113,7 @@ impl Connection {
         buf: &mut RW,
         op_code: OpCode,
         data: impl WriteableReq,
-    ) -> IgniteResult<T> {
+    ) -> Result<T> {
         Connection::send_safe(buf, op_code, data)?; //send request and read the response
         T::read(buf) //unpack the input bytes into an actual type
     }
@@ -131,7 +131,7 @@ impl Connection {
     }
 
     /// Reads standard response header
-    fn read_resp_header(reader: &mut impl Read) -> IgniteResult<Flag> {
+    fn read_resp_header(reader: &mut impl Read) -> Result<Flag> {
         let _length = read_i32(reader)?;
         let _req_id = read_i64(reader)?;
         let status = read_i32(reader)?;
@@ -150,7 +150,7 @@ impl Connection {
     fn wrap_tls_stream(
         conf: &(rustls::ClientConfig, String),
         stream: TcpStream,
-    ) -> IgniteResult<rustls::StreamOwned<rustls::ClientSession, TcpStream>> {
+    ) -> Result<rustls::StreamOwned<rustls::ClientSession, TcpStream>> {
         let hostname = webpki::DNSNameRef::try_from_ascii_str(&conf.1)?;
         let tls_session = rustls::ClientSession::new(&Arc::new(conf.0.clone()), hostname);
         let tls_stream = rustls::StreamOwned::new(tls_session, stream);

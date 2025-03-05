@@ -1,55 +1,60 @@
-use std::fmt::{Display, Formatter};
+use bufstream::BufStream;
+use snafu::Snafu;
+use std::convert;
 use std::io::Error as IoError;
-use std::{convert, error};
+use std::net::TcpStream;
+use std::sync::{MutexGuard, PoisonError};
 #[cfg(feature = "ssl")]
 use webpki::InvalidDNSNameError;
 
-pub type IgniteResult<T> = Result<T, IgniteError>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug)]
-pub struct IgniteError {
-    pub(crate) desc: String,
+#[derive(Snafu, Debug)]
+pub enum Error {
+    /// Custom error description
+    #[snafu(display("{}", desc))]
+    Custom { desc: String },
+
+    /// IO Error
+    #[snafu(display("IO Error: {}", source))]
+    IoError { source: IoError },
+
+    /// Poisoned Mutex
+    #[snafu(display("Mutex poisoned: {}", desc))]
+    MutexPoisoned { desc: String },
+
+    /// Invalid DNS Name
+    #[cfg(feature = "ssl")]
+    #[snafu(display("Invalid DNS Name: {}", desc))]
+    InvalidDNSName { desc: String },
 }
 
-impl error::Error for IgniteError {}
-
-impl Display for IgniteError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.desc)
+impl convert::From<IoError> for Error {
+    fn from(err: IoError) -> Self {
+        Error::IoError { source: err }
     }
 }
 
-impl convert::From<IoError> for IgniteError {
-    fn from(e: IoError) -> Self {
-        IgniteError {
-            desc: e.to_string(),
-        }
-    }
-}
-
-impl convert::From<&str> for IgniteError {
+impl convert::From<&str> for Error {
     fn from(desc: &str) -> Self {
-        IgniteError {
-            desc: String::from(desc),
+        Error::Custom {
+            desc: desc.to_string(),
         }
     }
 }
 
-impl convert::From<Option<String>> for IgniteError {
-    fn from(desc: Option<String>) -> Self {
-        match desc {
-            Some(desc) => IgniteError { desc },
-            None => IgniteError {
-                desc: "Ignite client error! No description provided".to_owned(),
-            },
+impl From<PoisonError<MutexGuard<'_, BufStream<TcpStream>>>> for Error {
+    fn from(err: PoisonError<MutexGuard<'_, BufStream<TcpStream>>>) -> Self {
+        Error::MutexPoisoned {
+            desc: err.to_string(),
         }
     }
 }
 
 #[cfg(feature = "ssl")]
-impl convert::From<InvalidDNSNameError> for IgniteError {
+impl convert::From<InvalidDNSNameError> for Error {
     fn from(err: InvalidDNSNameError) -> Self {
-        IgniteError {
+        Error::InvalidDNSName {
             desc: err.to_string(),
         }
     }

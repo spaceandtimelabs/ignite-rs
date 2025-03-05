@@ -1,7 +1,7 @@
 use std::io;
 use std::io::{ErrorKind, Read, Write};
 
-use crate::error::{IgniteError, IgniteResult};
+use crate::error::{Error, Result};
 
 use crate::{Enum, ReadableType};
 use std::convert::TryFrom;
@@ -52,7 +52,7 @@ pub enum TypeCode {
 }
 
 impl TryFrom<u8> for TypeCode {
-    type Error = IgniteError;
+    type Error = Error;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
@@ -81,7 +81,7 @@ impl TryFrom<u8> for TypeCode {
             27 => Ok(TypeCode::WrappedData),
             103 => Ok(TypeCode::ComplexObj),
             101 => Ok(TypeCode::Null),
-            _ => Err(IgniteError::from(
+            _ => Err(Error::from(
                 format!("Cannot read TypeCode {}", value).as_str(),
             )),
         }
@@ -94,20 +94,20 @@ pub(crate) enum Flag {
     Failure { err_msg: String },
 }
 
-fn read_object(reader: &mut impl Read) -> IgniteResult<Option<()>> {
+fn read_object(reader: &mut impl Read) -> Result<Option<()>> {
     let flag = read_u8(reader)?;
     let code = TypeCode::try_from(flag);
     let code = code?;
     match code {
         TypeCode::Null => Ok(Some(())),
-        _ => Err(IgniteError::from(
+        _ => Err(Error::from(
             format!("Cannot read TypeCode {}", flag).as_str(),
         )),
     }
 }
 
 /// Reads data objects that are wrapped in the WrappedData(type code = 27)
-pub fn read_wrapped_data<T: ReadableType>(reader: &mut impl Read) -> IgniteResult<Option<T>> {
+pub fn read_wrapped_data<T: ReadableType>(reader: &mut impl Read) -> Result<Option<T>> {
     let type_code = TypeCode::try_from(read_u8(reader)?)?;
     match type_code {
         TypeCode::WrappedData => {
@@ -123,8 +123,8 @@ pub fn read_wrapped_data<T: ReadableType>(reader: &mut impl Read) -> IgniteResul
 /// Reads data objects that are wrapped in the WrappedData(type code = 27)
 pub fn read_wrapped_data_dyn(
     reader: &mut dyn Read,
-    cb: &mut dyn Fn(&mut dyn Read, i32) -> IgniteResult<()>,
-) -> IgniteResult<()> {
+    cb: &mut dyn Fn(&mut dyn Read, i32) -> Result<()>,
+) -> Result<()> {
     let type_code = TypeCode::try_from(read_u8(reader)?)?;
     match type_code {
         TypeCode::WrappedData => {
@@ -133,15 +133,15 @@ pub fn read_wrapped_data_dyn(
             let _offset = read_i32(reader)?;
             value
         }
-        _ => Err(IgniteError::from("Data is not wrapped!")),
+        _ => Err(Error::from("Data is not wrapped!")),
     }
 }
 
 /// Reads a complex object (type code = 103)
 pub fn read_complex_obj_dyn(
     reader: &mut dyn Read,
-    cb: &mut dyn Fn(&mut dyn Read, i32) -> IgniteResult<()>,
-) -> IgniteResult<()> {
+    cb: &mut dyn Fn(&mut dyn Read, i32) -> Result<()>,
+) -> Result<()> {
     let _ver = read_u8(reader)?; // 1
     let flags = read_u16(reader)?; // 43
     let _type_id = read_i32(reader)?;

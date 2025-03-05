@@ -8,8 +8,8 @@ use crate::cache::{
 use crate::cache::{
     CacheConfiguration, CacheKeyConfiguration, QueryEntity, QueryField, QueryIndex,
 };
-use crate::error::IgniteError;
-use crate::error::IgniteResult;
+use crate::error::Error;
+use crate::error::Result;
 use crate::protocol::cache_config::ConfigPropertyCode::*;
 use crate::protocol::{
     read_bool, read_i32, read_i64, read_object, read_u8, write_bool, write_i16, write_i32,
@@ -186,7 +186,7 @@ pub(crate) fn get_cache_configuration_bytes(config: &CacheConfiguration) -> io::
     Ok(bytes)
 }
 
-pub(crate) fn read_cache_configuration(reader: &mut impl Read) -> IgniteResult<CacheConfiguration> {
+pub(crate) fn read_cache_configuration(reader: &mut impl Read) -> Result<CacheConfiguration> {
     let config = CacheConfiguration {
         atomicity_mode: AtomicityMode::try_from(read_i32(reader)?)?,
         num_backup: read_i32(reader)?,
@@ -199,7 +199,7 @@ pub(crate) fn read_cache_configuration(reader: &mut impl Read) -> IgniteResult<C
         default_lock_timeout_ms: read_i64(reader)?,
         max_concurrent_async_operations: read_i32(reader)?,
         max_query_iterators: read_i32(reader)?,
-        name: String::read(reader)?.ok_or_else(|| IgniteError::from("name is required"))?,
+        name: String::read(reader)?.ok_or_else(|| Error::from("name is required"))?,
         onheap_cache_enabled: read_bool(reader)?,
         partition_loss_policy: PartitionLossPolicy::try_from(read_i32(reader)?)?,
         query_detail_metrics_size: read_i32(reader)?,
@@ -222,7 +222,7 @@ pub(crate) fn read_cache_configuration(reader: &mut impl Read) -> IgniteResult<C
     Ok(config)
 }
 
-fn read_cache_key_configs(reader: &mut impl Read) -> IgniteResult<Vec<CacheKeyConfiguration>> {
+fn read_cache_key_configs(reader: &mut impl Read) -> Result<Vec<CacheKeyConfiguration>> {
     let count = read_i32(reader)?;
     let mut result = Vec::<CacheKeyConfiguration>::new();
     for _ in 0..count {
@@ -249,7 +249,7 @@ fn write_cache_key_configs(
     Ok(())
 }
 
-fn read_query_entities(reader: &mut impl Read) -> IgniteResult<Vec<QueryEntity>> {
+fn read_query_entities(reader: &mut impl Read) -> Result<Vec<QueryEntity>> {
     let count = read_i32(reader)?;
     let mut result = Vec::<QueryEntity>::new();
     for _ in 0..count {
@@ -292,7 +292,7 @@ fn write_query_entities(writer: &mut dyn Write, entities: &[QueryEntity]) -> io:
     Ok(())
 }
 
-fn read_query_fields(reader: &mut impl Read) -> IgniteResult<Vec<QueryField>> {
+fn read_query_fields(reader: &mut impl Read) -> Result<Vec<QueryField>> {
     let count = read_i32(reader)?;
     let mut result = Vec::<QueryField>::new();
     for _ in 0..count {
@@ -326,7 +326,7 @@ fn write_query_fields(writer: &mut dyn Write, fields: &[QueryField]) -> io::Resu
     Ok(())
 }
 
-fn read_query_field_aliases(reader: &mut impl Read) -> IgniteResult<Vec<(String, String)>> {
+fn read_query_field_aliases(reader: &mut impl Read) -> Result<Vec<(String, String)>> {
     let count = read_i32(reader)?;
     let mut result = Vec::<(String, String)>::new();
     for _ in 0..count {
@@ -346,7 +346,7 @@ fn write_field_aliases(writer: &mut dyn Write, aliases: &[(String, String)]) -> 
     Ok(())
 }
 
-fn read_query_indexes(reader: &mut impl Read) -> IgniteResult<Vec<QueryIndex>> {
+fn read_query_indexes(reader: &mut impl Read) -> Result<Vec<QueryIndex>> {
     let count = read_i32(reader)?;
     let mut result = Vec::<QueryIndex>::new();
     for _ in 0..count {
@@ -375,7 +375,7 @@ fn write_query_indexes(writer: &mut dyn Write, indexes: &[QueryIndex]) -> io::Re
     Ok(())
 }
 
-fn read_query_index_fields(reader: &mut impl Read) -> IgniteResult<Vec<(String, bool)>> {
+fn read_query_index_fields(reader: &mut impl Read) -> Result<Vec<(String, bool)>> {
     let count = read_i32(reader)?;
     let mut result = Vec::<(String, bool)>::new();
     for _ in 0..count {

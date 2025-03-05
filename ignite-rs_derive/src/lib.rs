@@ -105,7 +105,7 @@ fn impl_read_type(type_name: &Ident, fields: &FieldsNamed) -> TokenStream {
 
     quote! {
             impl ignite_rs::ReadableType for #type_name {
-            fn read_unwrapped(type_code: ignite_rs::protocol::TypeCode, reader: &mut impl std::io::Read) -> ignite_rs::error::IgniteResult<Option<Self>> {
+            fn read_unwrapped(type_code: ignite_rs::protocol::TypeCode, reader: &mut impl std::io::Read) -> ignite_rs::error::Result<Option<Self>> {
                 let value: Option<Self> = match type_code {
                     ignite_rs::protocol::TypeCode::Null => None,
                     _ => {
@@ -113,18 +113,18 @@ fn impl_read_type(type_name: &Ident, fields: &FieldsNamed) -> TokenStream {
 
                         let flags = ignite_rs::protocol::read_u16(reader)?; // read and parse flags
                         if (flags & ignite_rs::protocol::FLAG_HAS_SCHEMA) == 0 {
-                            return Err(ignite_rs::error::IgniteError::from("Serialized object schema expected!"));
+                            return Err(ignite_rs::error::Error::from("Serialized object schema expected!"));
                         }
                         if (flags & ignite_rs::protocol::FLAG_COMPACT_FOOTER) != 0 {
-                            return Err(ignite_rs::error::IgniteError::from("Compact footer is not supported!"));
+                            return Err(ignite_rs::error::Error::from("Compact footer is not supported!"));
                         }
                         if (flags & ignite_rs::protocol::FLAG_OFFSET_ONE_BYTE) != 0 || (flags & ignite_rs::protocol::FLAG_OFFSET_TWO_BYTES) != 0 {
-                            return Err(ignite_rs::error::IgniteError::from("Schema offset=4 is expected!"));
+                            return Err(ignite_rs::error::Error::from("Schema offset=4 is expected!"));
                         }
 
                         let type_id = ignite_rs::protocol::read_i32(reader)?; // read and check type_id
                         if type_id != #exp_type_id {
-                            return Err(ignite_rs::error::IgniteError::from(
+                            return Err(ignite_rs::error::Error::from(
                                 format!("Unknown type id! {} expected!", #exp_type_id).as_str(),
                             ));
                         }
